@@ -1,0 +1,39 @@
+# =============================================================================
+# We want to find which Album had the highest number of downloads and how much that was
+# Author: khalidnajm
+# Date: 2018-11-05 13:29
+# =============================================================================
+
+from sqlalchemy import create_engine, select, Table, MetaData, func, desc
+
+#create the engine to the Chinook database
+engine = create_engine('sqlite:///Chinook_Sqlite.sqlite')
+
+#make the conenction
+connection = engine.connect()
+
+#initialise metadata
+metadata = MetaData()
+
+#import the Album, Track and InvoiceLine tables
+album = Table('Album', metadata, autoload = True, autoload_with = engine)
+track = Table('Track', metadata, autoload = True, autoload_with = engine)
+invoiceline = Table('InvoiceLine', metadata, autoload = True, autoload_with = engine)
+
+#first, let's calculate the total number of sales for each track
+#to do this, we join the Track and InvoiceLine tables
+stmt = select([album.columns.Title, func.sum(invoiceline.columns.Quantity)])
+
+stmt = stmt.select_from(invoiceline.join(track).join(album))
+
+#group by TrackId
+stmt = stmt.group_by(track.columns.AlbumId)
+
+#order by number of sales per album
+stmt = stmt.order_by(desc(func.sum(invoiceline.columns.Quantity)))
+
+#get all of the results
+results = connection.execute(stmt).first()
+
+print('Album with highest number of downloads: ' + results[0])
+print('Number of downloads: ' + str(results[1]))
